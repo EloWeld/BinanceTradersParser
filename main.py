@@ -62,7 +62,6 @@ async def btnAllTrack(message: types.Message):
         for tr in tracks:
             await message.answer(text=f'Id: {tr["id"]}\n'
                                       f'Link: {tr["link"]}\n'
-                                      f'Rating: {tr["rating"]}\n'
                                       f'Position: {tr["pos"]}\n',
                                  reply_markup=nav.track_menu(tr["id"]))
 
@@ -90,6 +89,7 @@ head = {
 session = requests.session()
 session.headers.update(head)
 
+
 async def parse():
     tracks = TracksDB.get_tracks()
     for track in tracks:
@@ -100,34 +100,49 @@ async def parse():
         response = session.post(BINANCE_API_URL, data=json.dumps(payload), headers=head)
         if response and response.json() and response.json()["data"]:
             jsdata = response.json()["data"]["otherPositionRetList"]
-            data = {
+            newdata = {
                 "user_id": encUid,
                 "len_pos": len(jsdata),
-                "pos": [{
-                    "name": d["symbol"],
-                    "percent": d["roe"],
-                } for d in jsdata],
+                "pos": {d["symbol"]: d["amount"] for d in jsdata},
             }
+            # print(jsdata)
 
-            [data["pos"].append({
-                "name": d["symbol"],
-                "percent": d["roe"],
-            }) for d in jsdata]
+            TracksDB.update_track_data(json.dumps(newdata), track["id"])
+            olddata = json.loads(track["data"])
+            if (not isinstance(olddata["pos"], dict)) or "pos" not in olddata:
+                return
+            if olddata != newdata:
+                changes = []
+                for nd in newdata["pos"].keys():
+                    tiker = nd
+                    chgName = 'Long' if newdata["pos"][nd] > 0 else 'Short'
+                    # Position opening
+                    if nd not in olddata["pos"]:
+                        changes.append(f'⭐ {tiker} {chgName} !OPENED!')
+                    # Position diff calc
+                    if nd in olddata["pos"] and \
+                            newdata["pos"][nd] != olddata["pos"][nd]:
+                        diff = (newdata["pos"][nd] - olddata["pos"][nd]) / olddata["pos"][nd] * 100
+                        emj = '🔼' if diff > 0 else '🔽'
+                        if chgName == 'Long':
+                            emj = '🔺' if diff > 0 else '🔻'
 
-            TracksDB.update_track_data(json.dumps(data), track["id"])
-            if track["data"] != json.dumps(data):
-                print(track["data"])
-                print(json.dumps(data))
-                print("==============================")
+                        diff = f'+{"%.2f" % diff}' if diff > 0 else "%.2f" % diff
+                        changes.append(f'{emj} {tiker} {chgName}, position {diff}%')
+                # Position closing
+                try:
+                    for od in olddata["pos"].keys():
+                        chgName = 'Long' if olddata["pos"][od] > 0 else 'Short'
+                        if od not in newdata["pos"]:
+                            changes.append(f'🚫 {od} {chgName} !CLOSED!')
+                except:
+                    pass
+                print(changes)
                 # Sending
                 for chat in chats:
-                    crptid = data["user_id"][:4] + '***' + data["user_id"][-4:]
+                    crptid = newdata["user_id"][:4] + '***' + newdata["user_id"][-4:]
                     await bot.send_message(chat_id=chat, text='Uid: {} has {} positions\n'
-                                           .format(crptid, data["len_pos"]) + '\n'.join(
-                        [
-                            f'⭐{x["name"]} precent {x["percent"]}' for x in data["pos"]
-                        ]
-                    )
+                                           .format(crptid, newdata["len_pos"]) + '\n'.join(changes)
                                            )
 
 

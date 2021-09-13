@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
-REFRESH_RATE = 15
+REFRESH_RATE = 2
 TRACK_COND = 'encryptedUid'
 BINANCE_API_URL = 'https://www.binance.com/bapi/futures/v1/public/future/leaderboard/getOtherPosition'
 
