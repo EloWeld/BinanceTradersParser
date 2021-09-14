@@ -166,6 +166,8 @@ async def parse():
                             changes.append(f'🚫 {od} {chgName} !CLOSED!')
                 except:
                     pass
+                if not changes:
+                    return
                 print(changes)
                 # Sending
                 await bot.send_message(chat_id=CHAT_ID, text='Trader: {} has {} positions\n\n'
