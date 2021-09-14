@@ -53,18 +53,22 @@ class UsersDatabase(Database):
             'id': x[0],
             'tgid': x[1],
             'username': x[2],
+            'role': x[3],
         } for x in data]
         return d
 
+    def all_admins(self):
+        return [x for x in self.all_users() if x["role"] == 1]
+
 
 class TracksDatabase(Database):
-    def add_to_track(self, link: str):
+    def add_trader(self, link: str):
         sql = 'INSERT INTO trackers(link) VALUES (?)'
         params = (link,)
         data = self.execute(sql, params, commit=True)
         return data
 
-    def get_tracks(self):
+    def get_traders(self):
         sql = 'SELECT * FROM trackers'
         data = self.execute(sql, fetchall=True)
         if not data or len(data) == 0:
@@ -77,7 +81,7 @@ class TracksDatabase(Database):
         } for x in data]
         return d
 
-    def delete_track(self, x):
+    def delete_trader(self, x):
         sql = 'DELETE FROM trackers WHERE id = ?'
         params = (x,)
         self.execute(sql, params, commit=True)

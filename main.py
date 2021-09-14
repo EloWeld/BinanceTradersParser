@@ -21,14 +21,12 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 TracksDB = TracksDatabase()
 UsersDB = UsersDatabase()
 
-chats = set()
-
 
 # ============= CALLBACKS ============= #
 @dp.callback_query_handler(lambda c: "delete:" in c.data)
 async def callbacks(cb: CallbackQuery):
     link = cb.data.split(':')[1]
-    TracksDB.delete_track(link)
+    TracksDB.delete_trader(link)
     await cb.message.delete()
 
 
@@ -43,15 +41,18 @@ async def cmdStart(message: types.Message):
 @dp.message_handler(Command('add_to_track'))
 @dp.message_handler(Text('➕ Добавить ссылку на трек'))
 async def btnAddToTrack(message: types.Message):
-    await message.answer("Оптравь ссылку на трек ✉")
+    if message.from_user.id in [x["tgid"] for x in UsersDB.all_admins()]:
+        await message.answer("Оптравь ссылку на трек ✉")
 
-    await MenuStates.Command.set()
+        await MenuStates.Command.set()
+    else:
+        await message.answer("Сожалею, но вы не имеете прав на добавление треков")
 
 
-@dp.message_handler(Command('all_track'))
+@dp.message_handler(Command('all_tracks'))
 @dp.message_handler(Text('📃 Трек'))
 async def btnAllTrack(message: types.Message):
-    tracks = TracksDB.get_tracks()
+    tracks = TracksDB.get_traders()
 
     if not tracks:
         await message.answer('Треков нет')
@@ -70,7 +71,7 @@ async def btnAllTrack(message: types.Message):
 async def stateCommand(message: types.Message, state: FSMContext):
     # Filter
     if TRACK_COND in message.text:
-        TracksDB.add_to_track(message.text)
+        TracksDB.add_trader(message.text)
 
         await message.answer("Ок, добавил")
 
@@ -78,6 +79,12 @@ async def stateCommand(message: types.Message, state: FSMContext):
         await message.answer(f'Некорректная ссылка! \nУсловие: {TRACK_COND}')
 
     await state.finish()
+
+
+@dp.message_handler(Command('chatid '))
+async def cmdAny(message: types.Message):
+    print(message.chat.id)
+    await message.answer(f'ChatID: {message.chat.id}')
 
 
 # ============= PARSING ============= #
@@ -90,25 +97,49 @@ session = requests.session()
 session.headers.update(head)
 
 
+def format_float(f):
+    return '+' + f"%.{ACCUR}f" % f if f > 0 else f"%.{ACCUR}f" % f
+
+
+def get_nickanme(uid: str):
+    url = 'https://www.binance.com/bapi/futures/v2/public/future/leaderboard/getOtherLeaderboardBaseInfo'
+    payload = {
+        "encryptedUid": uid
+    }
+    head = {
+        'authority': 'www.binance.com',
+        'content-type': 'application/json',
+        'accept': '*/*',
+    }
+
+    a = session.post(url=url, data=json.dumps(payload), headers=head)
+    if a.status_code != 200:
+        return "Noname"
+    return a.json()["data"]["nickName"]
+
+
 async def parse():
-    tracks = TracksDB.get_tracks()
-    for track in tracks:
-        encUid = track["link"].split('encryptedUid=')[1]
+    traders = TracksDB.get_traders()
+    for trader in traders:
+        encUid = trader["link"].split('encryptedUid=')[1]
         payload = {
             "encryptedUid": encUid, "tradeType": "PERPETUAL"
         }
         response = session.post(BINANCE_API_URL, data=json.dumps(payload), headers=head)
+
+        trader_name = get_nickanme(encUid)
         if response and response.json() and response.json()["data"]:
             jsdata = response.json()["data"]["otherPositionRetList"]
             newdata = {
-                "user_id": encUid,
+                "trader_name": trader_name,
                 "len_pos": len(jsdata),
                 "pos": {d["symbol"]: d["amount"] for d in jsdata},
+                "ent_prices": {d["symbol"]: d["entryPrice"] for d in jsdata},
             }
-            # print(jsdata)
+            # print(jsdata, newdata)
 
-            TracksDB.update_track_data(json.dumps(newdata), track["id"])
-            olddata = json.loads(track["data"])
+            TracksDB.update_track_data(json.dumps(newdata), trader["id"])
+            olddata = json.loads(trader["data"])
             if (not isinstance(olddata["pos"], dict)) or "pos" not in olddata:
                 return
             if olddata != newdata:
@@ -116,19 +147,17 @@ async def parse():
                 for nd in newdata["pos"].keys():
                     tiker = nd
                     chgName = 'Long' if newdata["pos"][nd] > 0 else 'Short'
+                    ent_price = "%.3f" % newdata["ent_prices"][nd]
                     # Position opening
                     if nd not in olddata["pos"]:
-                        changes.append(f'⭐ {tiker} {chgName} !OPENED!')
+                        changes.append(f'⭐ __{tiker}__ {chgName} !OPENED! (Entry price: {ent_price})')
                     # Position diff calc
                     if nd in olddata["pos"] and \
                             newdata["pos"][nd] != olddata["pos"][nd]:
                         diff = (newdata["pos"][nd] - olddata["pos"][nd]) / olddata["pos"][nd] * 100
                         emj = '🔼' if diff > 0 else '🔽'
-                        if chgName == 'Long':
-                            emj = '🔺' if diff > 0 else '🔻'
-
-                        diff = f'+{"%.2f" % diff}' if diff > 0 else "%.2f" % diff
-                        changes.append(f'{emj} {tiker} {chgName}, position {diff}%')
+                        diff = format_float(diff)
+                        changes.append(f'{emj} {tiker} {chgName}, position {diff}% (Entry price: {ent_price})')
                 # Position closing
                 try:
                     for od in olddata["pos"].keys():
@@ -139,11 +168,10 @@ async def parse():
                     pass
                 print(changes)
                 # Sending
-                for chat in chats:
-                    crptid = newdata["user_id"][:4] + '***' + newdata["user_id"][-4:]
-                    await bot.send_message(chat_id=chat, text='Uid: {} has {} positions\n'
-                                           .format(crptid, newdata["len_pos"]) + '\n'.join(changes)
-                                           )
+                await bot.send_message(chat_id=CHAT_ID, text='Trader: {} has {} positions\n\n'
+                                       .format(newdata["trader_name"], newdata["len_pos"]) + '\n'.join(changes),
+                                       parse_mode="Markdown"
+                                       )
 
 
 # ============= TIMER ============= #
@@ -163,9 +191,6 @@ async def scheduled(wait_for, func):
 async def on_startup(dp):
     await set_default_commands(dp)
 
-    for item in UsersDB.all_users():
-        chats.add(item["tgid"])
-
 
 async def shutdown(dispatcher):
     await dispatcher.storage.close()
@@ -174,7 +199,7 @@ async def shutdown(dispatcher):
 
 async def set_default_commands(dp):
     await dp.bot.set_my_commands([
-        BotCommand("all_track", "Посмотреть трек"),
+        BotCommand("all_tracks", "Посмотреть трек"),
         BotCommand("add_to_track", "Добавить в трек линку"),
     ])
 
