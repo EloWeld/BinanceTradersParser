@@ -193,7 +193,6 @@ async def process_info():
     global minute_msgs
     from datetime import datetime
     c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-    print(c_time)
     if c_time != POSTING_TIME or len(minute_msgs) > 0:
         return
     minute_msgs += [1]
@@ -293,6 +292,8 @@ async def scheduled(delay, interval, func):
 # ============= STARTUP ============= #
 async def on_startup(dp):
     await set_default_commands(dp)
+    for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
+        await bot.send_message(chat_id=admin, text="Binanser bot strated")
 
 
 async def shutdown(dispatcher):
