@@ -143,7 +143,7 @@ def get_nickanme(trader):
     payload = {"encryptedUid": encUid}
 
     a = session.post(url=BINANCE_BASE_URL, data=json.dumps(payload), headers=head)
-    if a.status_code != 200 or (not a.json()) or ("data" not in a.json()):
+    if a.status_code != 200 or (not a.json()) or ("data" not in a.json()) or a.json()["data"] is None:
         return "Noname"
     return a.json()["data"]["nickName"]
 
@@ -154,7 +154,7 @@ def get_trader_positions(trader):
         "encryptedUid": encUid, "tradeType": "PERPETUAL"
     }
     response = session.post(BINANCE_POS_URL, data=json.dumps(payload), headers=head)
-    if (not response) or response.status_code != 20 or \
+    if (not response) or response.status_code != 200 or \
             (not response.json()) or \
             ("data" not in response.json()):
         return None
@@ -228,7 +228,7 @@ async def parse():
             TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
             # Exit if trader has no positions else check equiality of data with
             # previous values
-            if (not isinstance(olddata["pos"], dict)) or "pos" not in olddata:
+            if "pos" not in olddata or (not isinstance(olddata["pos"], dict)):
                 return
             if olddata != n_data:
                 changes = []
