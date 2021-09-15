@@ -21,6 +21,6 @@ def track_menu(data: str):
     return InlKeyboard(inline_keyboard=[
         [
             InlineBtn(text='Удалить ❌', callback_data=f'delete:{data}'),
-            InlineBtn(text='Заменить ссылку ⏪', callback_data=f'rewrite:{data}')
+            # InlineBtn(text='Заменить ссылку ⏪', callback_data=f'rewrite:{data}')
         ]
     ])

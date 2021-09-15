@@ -60,6 +60,18 @@ class UsersDatabase(Database):
     def all_admins(self):
         return [x for x in self.all_users() if x["role"] == 1]
 
+    def get_role(self, user_tgid):
+        sql = 'SELECT role FROM users WHERE tgid=?'
+        params = (user_tgid, )
+        data = self.execute(sql, params, fetchone=True)
+        return data[0]
+
+    def change_role(self, user_tgid, newrole):
+        sql = 'UPDATE users SET role=? WHERE tgid=?'
+        params = (newrole, user_tgid)
+        data = self.execute(sql, params, commit=True)
+        return data
+
 
 class TracksDatabase(Database):
     def add_trader(self, link: str):
@@ -86,7 +98,11 @@ class TracksDatabase(Database):
         params = (x,)
         self.execute(sql, params, commit=True)
 
-    def update_track_data(self, newdata, trackid):
+    def update_trader_data(self, newdata, trackid):
         sql = 'UPDATE trackers SET data = ? WHERE id = ?'
         params = (newdata, trackid)
         self.execute(sql, params, commit=True)
+
+
+TracksDB = TracksDatabase()
+UsersDB = UsersDatabase()
