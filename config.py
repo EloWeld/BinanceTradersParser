@@ -26,7 +26,7 @@ MSG = dict(MOTO="Здарова, вот твой бот. Короче скинь
            GET_ROLE="ℹ Вам была назначена роль: {0}",
            TRACK_ADDED="Трек добавлен в список ✅",
            TRADER_INFO_TITLE="ℹ<b><u>{0}</u></b> daily statement: \n==============\n",
-           OPENED="⭐ <u>{0}</u> <i>{1}</i> !OPENED! (Entry price: {2})",
-           CLOSED="🚫 {0} {1} !CLOSED!",
-           CHANGE="{0} <u>{1}</u> <i>{2}</i>, position {3}% (Entry price: {4})",
+           OPENED="⭐ <b>{0}</b> <i>{1}</i> !OPENED! (Entry price: {2})",
+           CLOSED="🚫 <b>{0}</b> <i>{1}</i> !CLOSED!",
+           CHANGE="{0} <b>{1}</b> <i>{2}</i>, position {3}% (Entry price: {4})",
            POST_TITLE="Трейдер: <b>{0}</b> имеет <b>{1}</b> позиции\n\n")

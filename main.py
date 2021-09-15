@@ -21,7 +21,7 @@ import bs4
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
-minute_msgs = []
+minute_msgs = False
 
 
 # ============= CALLBACKS ============= #
@@ -84,6 +84,21 @@ async def processCallbacks(cb: CallbackQuery):
 @dp.message_handler(Text('🤼‍♂️ Пользователи'), IsAdmin())
 async def btnAddToTrack(message: types.Message):
     await message.answer(MSG["USERS"], reply_markup=get_users_keyboard())
+
+
+@dp.message_handler(Command('scream_chat'), IsAdmin())
+@dp.message_handler(Text('🔊 Покричать'), IsAdmin())
+async def btnAddToTrack(message: types.Message):
+    await message.answer("Отправь текст")
+    state = dp.current_state(user=message.from_user.id)
+    await state.set_state("scream")
+
+
+@dp.message_handler(IsAdmin(), state="scream")
+async def btnAddToTrack(message: types.Message, state: FSMContext):
+    await bot.send_message(chat_id=CHAT_ID, text=message.text)
+    await bot.send_message(chat_id=CHANNAL_ID, text=message.text)
+    await state.finish()
 
 
 @dp.message_handler(Command('all_tracks'))
@@ -173,6 +188,7 @@ def get_trader_performance(trader):
         return None
     roe_stat = {x["periodType"]: float(x["value"]) for x in r.json()["data"] if x["statisticsType"] == "ROI"}
     pnl_stat = {x["periodType"]: float(x["value"]) for x in r.json()["data"] if x["statisticsType"] == "PNL"}
+    print(roe_stat)
     return roe_stat, pnl_stat
 
 
@@ -188,20 +204,25 @@ async def send_trader_info(trader, t_name: str):
     for admin_id in [x["tgid"] for x in UsersDB.all_admins()]:
         await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
 
+    await bot.send_message(chat_id=CHANNAL_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id=CHAT_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
+
 
 async def process_info():
     global minute_msgs
-    from datetime import datetime
-    c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-    if c_time != POSTING_TIME or len(minute_msgs) > 0:
-        return
-    minute_msgs += [1]
-    traders = TracksDB.get_traders()
-    for trader in traders:
-        # Get trader name
-        trader_name = get_nickanme(trader)
-        # Check posting time
-        await send_trader_info(trader, trader_name)
+
+    if not minute_msgs:
+        from datetime import datetime
+        c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
+        if c_time != POSTING_TIME or len(minute_msgs) > 0:
+            return
+        minute_msgs = True
+        traders = TracksDB.get_traders()
+        for trader in traders:
+            # Get trader name
+            trader_name = get_nickanme(trader)
+            # Check posting time
+            await send_trader_info(trader, trader_name)
 
 
 async def parse():
@@ -223,14 +244,16 @@ async def parse():
                 "ent_prices": {d["symbol"]: d["entryPrice"] for d in jsdata},
             }
             # print(jsdata, newdata)
-
-            # Update trader data in database
-            TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
             # Exit if trader has no positions else check equiality of data with
             # previous values
             if "pos" not in olddata or (not isinstance(olddata["pos"], dict)):
+                print('Old data corrupted')
                 return
+
             if olddata != n_data:
+                # Update trader data in database
+                TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
+
                 changes = []
                 for nd in n_data["pos"].keys():
                     tiker = nd
@@ -266,13 +289,14 @@ async def parse():
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
                                        )
-
+            else:
+                print('No Changes')
 
 # ============= TIMER ============= #
 
 async def minute_timer():
     global minute_msgs
-    minute_msgs = []
+    minute_msgs = False
 
 
 def timer_startup():
@@ -306,6 +330,7 @@ async def set_default_commands(dp):
         BotCommand("all_tracks", "Посмотреть трек"),
         BotCommand("add_to_track", "Добавить в трек линку"),
         BotCommand("users", "Список юзеров"),
+        BotCommand("scream_chat", "Покричать что-то в чат/канал")
     ])
 
 

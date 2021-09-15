@@ -12,7 +12,9 @@ from config import TOKEN, REFRESH_RATE, MSG
 main_menu = Menu(resize_keyboard=True, keyboard=[
     [
         Btn('➕ Добавить ссылку на трек'),
-        Btn('📃 Трек')
+        Btn('📃 Трек'),
+        Btn('🤼‍♂️ Пользователи'),
+        Btn('🔊 Покричать')
     ]
 ])
 
