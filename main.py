@@ -14,7 +14,7 @@ from aiogram.utils.markdown import text, underline, italic, bold
 import nav
 from config import *
 from database import *
-from filters import IsAdmin
+from filters import IsAdmin, IsPrivate
 from states import *
 import bs4
 
@@ -34,14 +34,14 @@ async def callbacks(cb: CallbackQuery):
 
 # ============= HANDLERS ============= #
 
-@dp.message_handler(CommandStart())
+@dp.message_handler(IsPrivate(), CommandStart())
 async def cmdStart(message: types.Message):
     await message.answer(MSG["MOTO"], reply_markup=nav.main_menu)
     UsersDB.add_user(int(message.chat.id), message.from_user.username)
 
 
-@dp.message_handler(Command('add_to_track'))
-@dp.message_handler(Text('➕ Добавить ссылку на трек'))
+@dp.message_handler(IsPrivate(), Command('add_to_track'))
+@dp.message_handler(IsPrivate(), Text('➕ Добавить ссылку на трек'))
 async def btnAddToTrack(message: types.Message):
     if message.from_user.id in [x["tgid"] for x in UsersDB.all_admins()]:
         await message.answer("Оптравь ссылку на трек ✉")
@@ -68,7 +68,7 @@ def get_users_keyboard():
     return InlineKeyboardMarkup(row_width=3, inline_keyboard=alls)
 
 
-@dp.callback_query_handler(IsAdmin())
+@dp.callback_query_handler(IsPrivate(), IsAdmin())
 async def processCallbacks(cb: CallbackQuery):
     if 'user_role' in cb.data:
         user_tgid = cb.data.split(':')[1]
@@ -80,29 +80,90 @@ async def processCallbacks(cb: CallbackQuery):
         await bot.send_message(chat_id=user_tgid, text=MSG["GET_ROLE"].format(ROLES[new_role]))
 
 
-@dp.message_handler(Command('users'), IsAdmin())
-@dp.message_handler(Text('🤼‍♂️ Пользователи'), IsAdmin())
+@dp.message_handler(Command('users'), IsAdmin(), IsPrivate())
+@dp.message_handler(Text('🤼‍♂️ Пользователи'), IsAdmin(), IsPrivate())
 async def btnAddToTrack(message: types.Message):
     await message.answer(MSG["USERS"], reply_markup=get_users_keyboard())
 
 
-@dp.message_handler(Command('scream_chat'), IsAdmin())
-@dp.message_handler(Text('🔊 Покричать'), IsAdmin())
-async def btnAddToTrack(message: types.Message):
+# region SCREAM
+
+@dp.message_handler(Command('scream_chat'), IsAdmin(), IsPrivate())
+@dp.message_handler(Text('🔊 Покричать'), IsAdmin(), IsPrivate())
+async def btnScreamChat(message: types.Message):
     await message.answer("Отправь текст")
     state = dp.current_state(user=message.from_user.id)
     await state.set_state("scream")
 
 
-@dp.message_handler(IsAdmin(), state="scream")
-async def btnAddToTrack(message: types.Message, state: FSMContext):
+@dp.message_handler(IsAdmin(), IsPrivate(), state="scream")
+async def stateScreamChat(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=CHAT_ID, text=message.text)
-    await bot.send_message(chat_id=CHANNAL_ID, text=message.text)
+    await bot.send_message(chat_id=CHANNEL_ID, text=message.text)
     await state.finish()
 
 
-@dp.message_handler(Command('all_tracks'))
-@dp.message_handler(Text('📃 Трек'))
+# endregion
+
+# region CHANGE CHANNEL
+
+@dp.message_handler(Command('change_channel'), IsAdmin(), IsPrivate())
+@dp.message_handler(Text('🍁 Изменить канал'), IsAdmin(), IsPrivate())
+async def btnChangeChannel(message: types.Message):
+    await message.answer(MSG["CHANGE_CH_MSG"])
+    state = dp.current_state(user=message.from_user.id)
+    await state.set_state("change_channel")
+
+
+@dp.message_handler(IsAdmin(), IsPrivate(), state="change_channel")
+async def stateChangeChannel(message: types.Message, state: FSMContext):
+    try:
+        test_chat = message.text
+        msg = await bot.send_message(chat_id=test_chat, text=MSG["TEST_CHAT"])
+        await asyncio.sleep(0.5)
+        await msg.delete()
+        await message.answer(text=MSG["CHAT_ACCEPTED"])
+        os.putenv("CHANNEL", test_chat)
+        os.environ["CHANNEL"] = test_chat
+        await state.finish()
+    except Exception as e:
+        await message.answer(text=MSG["CHAT_REJECTED"])
+        print(e)
+        await state.finish()
+
+
+# endregion
+
+# region CHANGE POSTING TIME
+
+@dp.message_handler(Command('change_time'), IsAdmin(), IsPrivate())
+@dp.message_handler(Text('⌚ Изменить время'), IsAdmin(), IsPrivate())
+async def btnChangeTime(message: types.Message):
+    await message.answer(MSG["CHANGE_TIME_MSG"])
+    state = dp.current_state(user=message.from_user.id)
+    await state.set_state("change_time")
+
+
+@dp.message_handler(IsAdmin(), IsPrivate(), state="change_time")
+async def stateChangeTime(message: types.Message, state: FSMContext):
+    try:
+        test_chat = message.text
+        hours = str(test_chat.split(':')[0]).zfill(2)
+        mins = str(test_chat.split(':')[1]).zfill(2)
+        os.putenv("POSTING_TIME", f'{hours}:{mins}')
+        os.environ["POSTING_TIME"] = f'{hours}:{mins}'
+        await message.answer(text=MSG["TIME_ACCEPTED"].format(f'{hours}:{mins}'))
+        await state.finish()
+    except Exception as e:
+        await message.answer(text="Не вышло изменить время")
+        print(e)
+        await state.finish()
+
+
+# endregion
+
+@dp.message_handler(Command('all_tracks'), IsPrivate())
+@dp.message_handler(Text('📃 Трек'), IsPrivate())
 async def btnAllTrack(message: types.Message):
     tracks = TracksDB.get_traders()
 
@@ -119,7 +180,7 @@ async def btnAllTrack(message: types.Message):
                                  reply_markup=nav.track_menu(tr["id"]))
 
 
-@dp.message_handler(state=MenuStates.Command)
+@dp.message_handler(IsPrivate(), state=MenuStates.Command)
 async def stateCommand(message: types.Message, state: FSMContext):
     # Filter
     if TRACK_COND in message.text:
@@ -133,7 +194,7 @@ async def stateCommand(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.message_handler(Command('chatid '))
+@dp.message_handler(IsPrivate(), Command('chatid'))
 async def cmdAny(message: types.Message):
     print(message.chat.id)
     await message.answer(f'ChatID: {message.chat.id}')
@@ -197,14 +258,15 @@ async def send_trader_info(trader, t_name: str):
     title = MSG["TRADER_INFO_TITLE"].format(t_name)
     description = ''
     for r in roe:
-        description += f'<b>{str(r).capitalize().replace("_", " ")}</b>: {format_float(roe[r] * 100, 2)}% \n'
+        if r != 'ALL':  # Да, да, блять, костыли, ну и похуй
+            description += f'<b>{MSG_S[r]}</b>: {format_float(roe[r] * 100, 2)}% \n'
 
     footer = f"==============\n"
 
     for admin_id in [x["tgid"] for x in UsersDB.all_admins()]:
         await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
 
-    await bot.send_message(chat_id=CHANNAL_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id=CHANNEL_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
     await bot.send_message(chat_id=CHAT_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
@@ -214,15 +276,17 @@ async def process_info():
     if not minute_msgs:
         from datetime import datetime
         c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-        if c_time != POSTING_TIME or len(minute_msgs) > 0:
+        pt = os.getenv("POSTING_TIME")
+        if c_time != pt:
             return
-        minute_msgs = True
-        traders = TracksDB.get_traders()
-        for trader in traders:
-            # Get trader name
-            trader_name = get_nickanme(trader)
-            # Check posting time
-            await send_trader_info(trader, trader_name)
+        else:
+            minute_msgs = True
+            traders = TracksDB.get_traders()
+            for trader in traders:
+                # Get trader name
+                trader_name = get_nickanme(trader)
+                # Check posting time
+                await send_trader_info(trader, trader_name)
 
 
 async def parse():
@@ -285,12 +349,13 @@ async def parse():
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
                                        )
-                await bot.send_message(chat_id=CHANNAL_ID,
+                await bot.send_message(chat_id=os.getenv("CHANNEL"),
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
                                        )
             else:
                 print('No Changes')
+
 
 # ============= TIMER ============= #
 
@@ -330,7 +395,9 @@ async def set_default_commands(dp):
         BotCommand("all_tracks", "Посмотреть трек"),
         BotCommand("add_to_track", "Добавить в трек линку"),
         BotCommand("users", "Список юзеров"),
-        BotCommand("scream_chat", "Покричать что-то в чат/канал")
+        BotCommand("scream_chat", "Покричать что-то в чат/канал"),
+        BotCommand("change_channel", "Изменить канал"),
+        BotCommand("change_time", "Изменить время постинга"),
     ])
 
 
