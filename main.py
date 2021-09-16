@@ -37,7 +37,10 @@ async def callbacks(cb: CallbackQuery):
 @dp.message_handler(IsPrivate(), CommandStart())
 async def cmdStart(message: types.Message):
     await message.answer(MSG["MOTO"], reply_markup=nav.main_menu)
-    UsersDB.add_user(int(message.chat.id), message.from_user.username)
+    try:
+        UsersDB.add_user(int(message.chat.id), message.from_user.username)
+    except sqlite3.IntegrityError:
+        print(f'User {message.from_user.username} already registered!')
 
 
 @dp.message_handler(IsPrivate(), Command('add_to_track'))
@@ -218,8 +221,11 @@ def get_nickanme(trader):
     encUid = trader["link"].split('encryptedUid=')[1]
     payload = {"encryptedUid": encUid}
 
-    a = session.post(url=BINANCE_BASE_URL, data=json.dumps(payload), headers=head)
-    if a.status_code != 200 or (not a.json()) or ("data" not in a.json()) or a.json()["data"] is None:
+    try:
+        a = session.post(url=BINANCE_BASE_URL, data=json.dumps(payload), headers=head)
+        if a.status_code != 200 or (not a.json()) or ("data" not in a.json()) or a.json()["data"] is None:
+            return "Noname"
+    except:
         return "Noname"
     return a.json()["data"]["nickName"]
 
@@ -307,27 +313,24 @@ async def parse():
                 "pos": {d["symbol"]: d["amount"] for d in jsdata},
                 "ent_prices": {d["symbol"]: d["entryPrice"] for d in jsdata},
             }
+            # Update trader data in database
+            TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
             # print(jsdata, newdata)
             # Exit if trader has no positions else check equiality of data with
             # previous values
-            if "pos" not in olddata or (not isinstance(olddata["pos"], dict)):
-                print('Old data corrupted')
-                return
-
             if olddata != n_data:
-                # Update trader data in database
-                TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
-
                 changes = []
                 for nd in n_data["pos"].keys():
                     tiker = nd
                     chgName = 'Long' if n_data["pos"][nd] > 0 else 'Short'
                     ent_price = "%.3f" % n_data["ent_prices"][nd]
                     # Position opening
-                    if nd not in olddata["pos"]:
+                    if "pos" not in olddata or nd not in olddata["pos"]:
                         changes.append(MSG["OPENED"].format(tiker, chgName, ent_price))
                     # Position diff calc
-                    if nd in olddata["pos"] and \
+                    if "pos" not in olddata or (not isinstance(olddata["pos"], dict)):
+                        print('Old data corrupted')
+                    elif nd in olddata["pos"] and \
                             n_data["pos"][nd] != olddata["pos"][nd]:
                         diff = (n_data["pos"][nd] - olddata["pos"][nd]) / olddata["pos"][nd] * 100
                         emj = '🔼' if diff > 0 else '🔽'
@@ -342,7 +345,7 @@ async def parse():
                 except:
                     pass
                 if not changes:
-                    return
+                    continue
                 print(changes)
                 # Sending
                 await bot.send_message(chat_id=CHAT_ID,
@@ -355,6 +358,9 @@ async def parse():
                                        )
             else:
                 print('No Changes')
+                print(olddata)
+                print(n_data)
+                print('=' * 50)
 
 
 # ============= TIMER ============= #
