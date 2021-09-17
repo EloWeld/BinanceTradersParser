@@ -22,7 +22,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 minute_msgs = False
-
+is_parsing = False
 
 # ============= CALLBACKS ============= #
 @dp.callback_query_handler(lambda c: "delete:" in c.data)
@@ -39,7 +39,7 @@ async def cmdStart(message: types.Message):
     await message.answer(MSG["MOTO"], reply_markup=nav.main_menu)
     try:
         UsersDB.add_user(int(message.chat.id), message.from_user.username)
-    except sqlite3.IntegrityError:
+    except Exception as e:
         print(f'User {message.from_user.username} already registered!')
 
 
@@ -71,7 +71,7 @@ def get_users_keyboard():
     return InlineKeyboardMarkup(row_width=3, inline_keyboard=alls)
 
 
-@dp.callback_query_handler(IsPrivate(), IsAdmin())
+@dp.callback_query_handler(IsAdmin())
 async def processCallbacks(cb: CallbackQuery):
     if 'user_role' in cb.data:
         user_tgid = cb.data.split(':')[1]
@@ -102,7 +102,7 @@ async def btnScreamChat(message: types.Message):
 @dp.message_handler(IsAdmin(), IsPrivate(), state="scream")
 async def stateScreamChat(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=CHAT, text=message.text)
-    await bot.send_message(chat_id=CHANNEL_ID, text=message.text)
+    await bot.send_message(chat_id=CHANNEL, text=message.text)
     await state.finish()
 
 
@@ -182,15 +182,16 @@ async def btnAllTrack(message: types.Message):
                                       f'Position: {tr["pos"]}\n',
                                  reply_markup=nav.track_menu(tr["id"]))
 
-
 @dp.message_handler(IsPrivate(), Command('config'), IsAdmin())
-async def stateCommand(message: types.Message, state: FSMContext):
+async def stateCommand(message: types.Message):
+    global is_parsing
     t = '=== CONFIG ===' + '\n'
     t += f'TIME: {os.getenv("POSTING_TIME")}' + '\n'
     t += f'CHANNEL: {os.getenv("CHANNEL")}' + '\n'
     t += f'CHAT: {os.getenv("CHAT")}' + '\n'
     t += f'REFRESH_RATE: {os.getenv("REFRESH_RATE")}' + '\n'
     t += f'ACCUR: {os.getenv("ACCUR")}' + '\n'
+    t += f'PARSING: {is_parsing}' + '\n'
     t += '=== ===== ===' + '\n'
     await message.answer(text=t)
 
@@ -284,7 +285,7 @@ async def send_trader_info(trader, t_name: str):
     for admin_id in [x["tgid"] for x in UsersDB.all_admins()]:
         await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
 
-    await bot.send_message(chat_id=CHANNEL_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id=CHANNEL, text=title + description + footer, parse_mode=ParseMode.HTML)
     await bot.send_message(chat_id=CHAT, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
@@ -298,6 +299,7 @@ async def process_info():
         if c_time != pt:
             return
         else:
+            print("Posting time! YO!")
             minute_msgs = True
             traders = TracksDB.get_traders()
             for trader in traders:
@@ -308,6 +310,8 @@ async def process_info():
 
 
 async def parse():
+    global is_parsing
+    is_parsing = True
     traders = TracksDB.get_traders()
     for trader in traders:
         print(trader)
@@ -382,9 +386,7 @@ async def minute_timer():
 
 def timer_startup():
     loop_bot = asyncio.get_event_loop()
-    loop_bot.create_task(scheduled(delay=0, interval=REFRESH_RATE, func=parse))
-    loop_bot.create_task(scheduled(delay=0, interval=20, func=process_info))
-    loop_bot.create_task(scheduled(delay=0, interval=60, func=minute_timer))
+    print(loop_bot)
 
 
 async def scheduled(delay, interval, func):
@@ -397,11 +399,12 @@ async def scheduled(delay, interval, func):
 # ============= STARTUP ============= #
 async def on_startup(dp):
     await set_default_commands(dp)
+    timer_startup()
     for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
         await bot.send_message(chat_id=admin, text="Binanser bot strated")
 
 
-async def shutdown(dispatcher):
+async def on_shutdown(dispatcher):
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
 
@@ -418,7 +421,9 @@ async def set_default_commands(dp):
 
 
 if __name__ == "__main__":
+    asyncio.ensure_future(scheduled(0, REFRESH_RATE, parse))
+    asyncio.ensure_future(scheduled(0, 20, process_info))
+    asyncio.ensure_future(scheduled(0, 60, minute_timer))
     print("Binanser started")
-    timer_startup()
     executor.start_polling(dp, on_startup=on_startup,
-                           on_shutdown=shutdown)
+                           on_shutdown=on_shutdown)

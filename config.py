@@ -12,7 +12,7 @@ DB_CREDS = Enum('ElephCredentails', PSDB)
 
 TOKEN = os.getenv('TOKEN')
 CHAT = os.getenv('CHAT')
-CHANNEL_ID = os.getenv('CHANNEL')
+CHANNEL = os.getenv('CHANNEL')
 ACCUR = os.getenv('ACCUR')
 POSTING_TIME = os.getenv('POSTING_TIME')
 REFRESH_RATE = int(os.getenv('REFRESH_RATE'))
