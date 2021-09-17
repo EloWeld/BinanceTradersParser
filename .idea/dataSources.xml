@@ -7,5 +7,11 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Data.db</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="nqywnhxr@chunee.db.elephantsql.com" uuid="306f8f71-cdec-46b6-8b4d-17b967fbf590">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://chunee.db.elephantsql.com:5432/nqywnhxr</jdbc-url>
+    </data-source>
   </component>
 </project>

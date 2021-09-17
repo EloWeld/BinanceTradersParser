@@ -101,7 +101,7 @@ async def btnScreamChat(message: types.Message):
 
 @dp.message_handler(IsAdmin(), IsPrivate(), state="scream")
 async def stateScreamChat(message: types.Message, state: FSMContext):
-    await bot.send_message(chat_id=CHAT_ID, text=message.text)
+    await bot.send_message(chat_id=CHAT, text=message.text)
     await bot.send_message(chat_id=CHANNEL_ID, text=message.text)
     await state.finish()
 
@@ -181,6 +181,18 @@ async def btnAllTrack(message: types.Message):
                                       f'Link: {tr["link"]}\n'
                                       f'Position: {tr["pos"]}\n',
                                  reply_markup=nav.track_menu(tr["id"]))
+
+
+@dp.message_handler(IsPrivate(), Command('config'), IsAdmin())
+async def stateCommand(message: types.Message, state: FSMContext):
+    t = '=== CONFIG ===' + '\n'
+    t += f'TIME: {os.getenv("POSTING_TIME")}' + '\n'
+    t += f'CHANNEL: {os.getenv("CHANNEL")}' + '\n'
+    t += f'CHAT: {os.getenv("CHAT")}' + '\n'
+    t += f'REFRESH_RATE: {os.getenv("REFRESH_RATE")}' + '\n'
+    t += f'ACCUR: {os.getenv("ACCUR")}' + '\n'
+    t += '=== ===== ===' + '\n'
+    await message.answer(text=t)
 
 
 @dp.message_handler(IsPrivate(), state=MenuStates.Command)
@@ -273,7 +285,7 @@ async def send_trader_info(trader, t_name: str):
         await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
 
     await bot.send_message(chat_id=CHANNEL_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
-    await bot.send_message(chat_id=CHAT_ID, text=title + description + footer, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id=CHAT, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
 async def process_info():
@@ -298,7 +310,7 @@ async def process_info():
 async def parse():
     traders = TracksDB.get_traders()
     for trader in traders:
-
+        print(trader)
         # Get trader name
         trader_name = get_nickanme(trader)
 
@@ -348,7 +360,7 @@ async def parse():
                     continue
                 print(changes)
                 # Sending
-                await bot.send_message(chat_id=CHAT_ID,
+                await bot.send_message(chat_id=CHAT,
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
                                        )
@@ -358,8 +370,6 @@ async def parse():
                                        )
             else:
                 print('No Changes')
-                print(olddata)
-                print(n_data)
                 print('=' * 50)
 
 

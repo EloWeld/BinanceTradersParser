@@ -1,10 +1,17 @@
 import os
+from enum import Enum
+
 from dotenv import load_dotenv
 
 load_dotenv()
+PSDB = dict(name="nqywnhxr", user="nqywnhxr",
+            pwd="6IqMyfxZPssKoafad39w8Lsiytyb-JDO",
+            host="chunee.db.elephantsql.com",
+            port="5432")
+DB_CREDS = Enum('ElephCredentails', PSDB)
 
 TOKEN = os.getenv('TOKEN')
-CHAT_ID = os.getenv('CHAT')
+CHAT = os.getenv('CHAT')
 CHANNEL_ID = os.getenv('CHANNEL')
 ACCUR = os.getenv('ACCUR')
 POSTING_TIME = os.getenv('POSTING_TIME')

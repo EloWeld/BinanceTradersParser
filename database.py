@@ -1,13 +1,7 @@
-import asyncio
 import sqlite3
+import psycopg2
 
-from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher
-from aiogram.types import ReplyKeyboardMarkup as Menu
-from aiogram.types import KeyboardButton as Btn
-from aiogram.utils import executor
-
-from config import TOKEN, REFRESH_RATE, MSG
+from config import DB_CREDS
 
 
 class Database:
@@ -17,7 +11,10 @@ class Database:
 
     @property
     def connection(self):
-        return sqlite3.connect(self.path_to_db)
+        return psycopg2.connect(dbname=DB_CREDS.name.value,
+                                user=DB_CREDS.user.value,
+                                password=DB_CREDS.pwd.value,
+                                host=DB_CREDS.host.value)
 
     def execute(self, sql: str, parameters: tuple = None, fetchone=False, fetchall=False, commit=False):
         if not parameters:
@@ -39,7 +36,7 @@ class Database:
 
 class UsersDatabase(Database):
     def add_user(self, id: int, username: str):
-        sql = 'INSERT INTO users(tgid, username) VALUES (?, ?)'
+        sql = 'INSERT INTO users(tgid, username) VALUES (%s, %s)'
         params = (id, username)
         data = self.execute(sql, params, commit=True)
         return data
@@ -61,13 +58,16 @@ class UsersDatabase(Database):
         return [x for x in self.all_users() if x["role"] == 1]
 
     def get_role(self, user_tgid):
-        sql = 'SELECT role FROM users WHERE tgid=?'
-        params = (user_tgid, )
+        sql = 'SELECT role FROM users ' \
+              'WHERE tgid = %s'
+        params = (user_tgid,)
         data = self.execute(sql, params, fetchone=True)
         return data[0]
 
     def change_role(self, user_tgid, newrole):
-        sql = 'UPDATE users SET role=? WHERE tgid=?'
+        sql = 'UPDATE users ' \
+              'SET role = %s ' \
+              'WHERE tgid = %s'
         params = (newrole, user_tgid)
         data = self.execute(sql, params, commit=True)
         return data
@@ -75,32 +75,35 @@ class UsersDatabase(Database):
 
 class TracksDatabase(Database):
     def add_trader(self, link: str):
-        sql = 'INSERT INTO trackers(link) VALUES (?)'
+        sql = 'INSERT INTO traders(link) VALUES (%s)'
         params = (link,)
         data = self.execute(sql, params, commit=True)
         return data
 
     def get_traders(self):
-        sql = 'SELECT * FROM trackers'
+        sql = 'SELECT * FROM traders'
         data = self.execute(sql, fetchall=True)
         if not data or len(data) == 0:
             return []
         d = [{
-            'id': x[3],
-            'link': x[0],
-            'data': x[1],
-            'pos': x[2],
+            'data': x[0],
+            'pos': x[1],
+            'id': x[2],
+            'link': x[3],
         } for x in data]
         return d
 
     def delete_trader(self, x):
-        sql = 'DELETE FROM trackers WHERE id = ?'
+        sql = 'DELETE FROM traders ' \
+              'WHERE id = %s'
         params = (x,)
         self.execute(sql, params, commit=True)
 
     def update_trader_data(self, newdata, trackid):
-        sql = 'UPDATE trackers SET data = ? WHERE id = ?'
-        params = (newdata, trackid)
+        sql = 'UPDATE traders ' \
+              'SET data = %s ' \
+              'WHERE id = %s'
+        params = (str(newdata), int(trackid))
         self.execute(sql, params, commit=True)
 
 
