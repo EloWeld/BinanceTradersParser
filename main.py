@@ -24,6 +24,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 minute_msgs = False
 is_parsing = False
 
+
 # ============= CALLBACKS ============= #
 @dp.callback_query_handler(lambda c: "delete:" in c.data)
 async def callbacks(cb: CallbackQuery):
@@ -128,6 +129,10 @@ async def stateChangeChannel(message: types.Message, state: FSMContext):
         await message.answer(text=MSG["CHAT_ACCEPTED"])
         os.putenv("CHANNEL", test_chat)
         os.environ["CHANNEL"] = test_chat
+        import dotenv
+        dotenv_file = dotenv.find_dotenv()
+        dotenv.load_dotenv(dotenv_file)
+        dotenv.set_key(dotenv_file, "CHANNEL", os.environ["CHANNEL"])
         await state.finish()
     except Exception as e:
         await message.answer(text=MSG["CHAT_REJECTED"])
@@ -155,6 +160,12 @@ async def stateChangeTime(message: types.Message, state: FSMContext):
         mins = str(test_chat.split(':')[1]).zfill(2)
         os.putenv("POSTING_TIME", f'{hours}:{mins}')
         os.environ["POSTING_TIME"] = f'{hours}:{mins}'
+
+        import dotenv
+        dotenv_file = dotenv.find_dotenv()
+        dotenv.load_dotenv(dotenv_file)
+        dotenv.set_key(dotenv_file, "POSTING_TIME", os.environ["POSTING_TIME"])
+
         await message.answer(text=MSG["TIME_ACCEPTED"].format(f'{hours}:{mins}'))
         await state.finish()
     except Exception as e:
@@ -169,7 +180,6 @@ async def stateChangeTime(message: types.Message, state: FSMContext):
 @dp.message_handler(Text('📃 Трек'), IsPrivate())
 async def btnAllTrack(message: types.Message):
     tracks = TracksDB.get_traders()
-
     if not tracks:
         await message.answer('Треков нет')
         return
@@ -181,6 +191,13 @@ async def btnAllTrack(message: types.Message):
                                       f'Link: {tr["link"]}\n'
                                       f'Position: {tr["pos"]}\n',
                                  reply_markup=nav.track_menu(tr["id"]))
+
+
+@dp.errors_handler()
+async def errors_handler(update, exception):
+    for admin_id in [x["tgid"] for x in UsersDB.all_admins()]:
+        await bot.send_message(admin_id, text="⛔ Ошибка: " + str(exception.args))
+
 
 @dp.message_handler(IsPrivate(), Command('config'), IsAdmin())
 async def stateCommand(message: types.Message):
@@ -401,12 +418,16 @@ async def on_startup(dp):
     await set_default_commands(dp)
     timer_startup()
     for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
-        await bot.send_message(chat_id=admin, text="Binanser bot strated")
+        await bot.send_message(chat_id=admin, text="💫 Binanser bot strated!")
 
 
 async def on_shutdown(dispatcher):
+    for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
+        await bot.send_message(chat_id=admin, text="🛑 Binanser bot shutdowned!")
+
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
+
 
 
 async def set_default_commands(dp):

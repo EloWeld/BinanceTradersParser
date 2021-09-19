@@ -1,1 +1,1 @@
-binanser_worker: python main.py
+binanser: python main.py
