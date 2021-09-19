@@ -11,7 +11,6 @@ PSDB = dict(name="nqywnhxr", user="nqywnhxr",
 DB_CREDS = Enum('ElephCredentails', PSDB)
 
 TOKEN = os.getenv('TOKEN')
-CHAT = os.getenv('CHAT')
 CHANNEL = os.getenv('CHANNEL')
 ACCUR = os.getenv('ACCUR')
 POSTING_TIME = os.getenv('POSTING_TIME')

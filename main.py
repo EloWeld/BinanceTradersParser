@@ -22,7 +22,8 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 minute_msgs = False
-is_parsing = False
+is_parsing = 0
+is_posting = 0
 
 
 # ============= CALLBACKS ============= #
@@ -102,7 +103,6 @@ async def btnScreamChat(message: types.Message):
 
 @dp.message_handler(IsAdmin(), IsPrivate(), state="scream")
 async def stateScreamChat(message: types.Message, state: FSMContext):
-    await bot.send_message(chat_id=CHAT, text=message.text)
     await bot.send_message(chat_id=CHANNEL, text=message.text)
     await state.finish()
 
@@ -202,13 +202,15 @@ async def errors_handler(update, exception):
 @dp.message_handler(IsPrivate(), Command('config'), IsAdmin())
 async def stateCommand(message: types.Message):
     global is_parsing
+    global is_posting
     t = '=== CONFIG ===' + '\n'
     t += f'TIME: {os.getenv("POSTING_TIME")}' + '\n'
     t += f'CHANNEL: {os.getenv("CHANNEL")}' + '\n'
-    t += f'CHAT: {os.getenv("CHAT")}' + '\n'
     t += f'REFRESH_RATE: {os.getenv("REFRESH_RATE")}' + '\n'
     t += f'ACCUR: {os.getenv("ACCUR")}' + '\n'
+    t += '---------' + '\n'
     t += f'PARSING: {is_parsing}' + '\n'
+    t += f'POSTING: {is_posting}' + '\n'
     t += '=== ===== ===' + '\n'
     await message.answer(text=t)
 
@@ -303,12 +305,12 @@ async def send_trader_info(trader, t_name: str):
         await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
 
     await bot.send_message(chat_id=CHANNEL, text=title + description + footer, parse_mode=ParseMode.HTML)
-    await bot.send_message(chat_id=CHAT, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
 async def process_info():
     global minute_msgs
-
+    global is_posting
+    is_posting += 1
     if not minute_msgs:
         from datetime import datetime
         c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
@@ -327,8 +329,11 @@ async def process_info():
 
 
 async def parse():
+    await process_info()
+
     global is_parsing
-    is_parsing = True
+    is_parsing += 1
+
     traders = TracksDB.get_traders()
     for trader in traders:
         print(trader)
@@ -381,10 +386,6 @@ async def parse():
                     continue
                 print(changes)
                 # Sending
-                await bot.send_message(chat_id=CHAT,
-                                       text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
-                                       parse_mode=ParseMode.HTML
-                                       )
                 await bot.send_message(chat_id=os.getenv("CHANNEL"),
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
@@ -401,11 +402,6 @@ async def minute_timer():
     minute_msgs = False
 
 
-def timer_startup():
-    loop_bot = asyncio.get_event_loop()
-    print(loop_bot)
-
-
 async def scheduled(delay, interval, func):
     await asyncio.sleep(delay)
     while True:
@@ -416,7 +412,6 @@ async def scheduled(delay, interval, func):
 # ============= STARTUP ============= #
 async def on_startup(dp):
     await set_default_commands(dp)
-    timer_startup()
     for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
         await bot.send_message(chat_id=admin, text="💫 Binanser bot strated!")
 
@@ -443,7 +438,6 @@ async def set_default_commands(dp):
 
 if __name__ == "__main__":
     asyncio.ensure_future(scheduled(0, REFRESH_RATE, parse))
-    asyncio.ensure_future(scheduled(0, 20, process_info))
     asyncio.ensure_future(scheduled(0, 60, minute_timer))
     print("Binanser started")
     executor.start_polling(dp, on_startup=on_startup,
