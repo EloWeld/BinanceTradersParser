@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 IS_SERVER = False
 SERVER_HOUR_OFFSET = -3
 load_dotenv()
-PSDB = dict(name="nqywnhxr", user="nqywnhxr",
-            pwd="oIeFf1npKGWowHbGFCiLtQHEMDse-YY_",
+PSDB = dict(name=os.getenv('DB_USER'), user=os.getenv('DB_USER'),
+            pwd=os.getenv('DB_PWD'),
             host="chunee.db.elephantsql.com",
             port="5432")
 DB_CREDS = Enum('ElephCredentails', PSDB)
