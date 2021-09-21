@@ -3,9 +3,11 @@ from enum import Enum
 
 from dotenv import load_dotenv
 
+IS_SERVER = False
+SERVER_HOUR_OFFSET = 3
 load_dotenv()
 PSDB = dict(name="nqywnhxr", user="nqywnhxr",
-            pwd="6IqMyfxZPssKoafad39w8Lsiytyb-JDO",
+            pwd="oIeFf1npKGWowHbGFCiLtQHEMDse-YY_",
             host="chunee.db.elephantsql.com",
             port="5432")
 DB_CREDS = Enum('ElephCredentails', PSDB)

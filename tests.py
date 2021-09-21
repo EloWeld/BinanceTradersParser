@@ -1,4 +1,6 @@
 import json
+import os
+from datetime import timedelta
 
 import requests
 
@@ -14,3 +16,4 @@ head = {
 
 a = requests.post(url=url, data=json.dumps(payload), headers=head)
 print(a.json()["data"]["nickName"])
+print(timedelta(hours=96, minutes=55).seconds / 60 % 60, )

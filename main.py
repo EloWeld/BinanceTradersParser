@@ -129,10 +129,11 @@ async def stateChangeChannel(message: types.Message, state: FSMContext):
         await message.answer(text=MSG["CHAT_ACCEPTED"])
         os.putenv("CHANNEL", test_chat)
         os.environ["CHANNEL"] = test_chat
-        import dotenv
-        dotenv_file = dotenv.find_dotenv()
-        dotenv.load_dotenv(dotenv_file)
-        dotenv.set_key(dotenv_file, "CHANNEL", os.environ["CHANNEL"])
+        if os.name == 'nt' and not IS_SERVER:
+            import dotenv
+            dotenv_file = dotenv.find_dotenv()
+            dotenv.load_dotenv(dotenv_file)
+            dotenv.set_key(dotenv_file, "CHANNEL", os.environ["CHANNEL"])
         await state.finish()
     except Exception as e:
         await message.answer(text=MSG["CHAT_REJECTED"])
@@ -156,15 +157,17 @@ async def btnChangeTime(message: types.Message):
 async def stateChangeTime(message: types.Message, state: FSMContext):
     try:
         test_chat = message.text
-        hours = str(test_chat.split(':')[0]).zfill(2)
-        mins = str(test_chat.split(':')[1]).zfill(2)
+        hoffset = 0 if os.name == 'nt' and not IS_SERVER else SERVER_HOUR_OFFSET
+        hours = str((int(test_chat.split(':')[0]) + hoffset) % 24).zfill(2)
+        mins = str(int(test_chat.split(':')[1]) % 60).zfill(2)
         os.putenv("POSTING_TIME", f'{hours}:{mins}')
         os.environ["POSTING_TIME"] = f'{hours}:{mins}'
 
-        import dotenv
-        dotenv_file = dotenv.find_dotenv()
-        dotenv.load_dotenv(dotenv_file)
-        dotenv.set_key(dotenv_file, "POSTING_TIME", os.environ["POSTING_TIME"])
+        if os.name == 'nt' and not IS_SERVER:
+            import dotenv
+            dotenv_file = dotenv.find_dotenv()
+            dotenv.load_dotenv(dotenv_file)
+            dotenv.set_key(dotenv_file, "POSTING_TIME", os.environ["POSTING_TIME"])
 
         await message.answer(text=MSG["TIME_ACCEPTED"].format(f'{hours}:{mins}'))
         await state.finish()
@@ -438,7 +441,7 @@ async def set_default_commands(dp):
 
 if __name__ == "__main__":
     asyncio.ensure_future(scheduled(0, REFRESH_RATE, parse))
-    asyncio.ensure_future(scheduled(0, 60, minute_timer))
+    asyncio.ensure_future(scheduled(0, 62, minute_timer))
     print("Binanser started")
     executor.start_polling(dp, on_startup=on_startup,
                            on_shutdown=on_shutdown)
