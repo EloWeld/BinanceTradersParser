@@ -304,9 +304,6 @@ async def send_trader_info(trader, t_name: str):
 
     footer = f"==============\n"
 
-    for admin_id in [x["tgid"] for x in UsersDB.all_admins()]:
-        await bot.send_message(chat_id=admin_id, text=title + description + footer, parse_mode=ParseMode.HTML)
-
     await bot.send_message(chat_id=CHANNEL, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
