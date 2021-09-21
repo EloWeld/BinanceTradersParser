@@ -4,7 +4,7 @@ from enum import Enum
 from dotenv import load_dotenv
 
 IS_SERVER = False
-SERVER_HOUR_OFFSET = 3
+SERVER_HOUR_OFFSET = -3
 load_dotenv()
 PSDB = dict(name="nqywnhxr", user="nqywnhxr",
             pwd="oIeFf1npKGWowHbGFCiLtQHEMDse-YY_",
