@@ -9,6 +9,12 @@ from aiogram.utils import executor
 
 from config import TOKEN, REFRESH_RATE, MSG
 
+guest_menu = Menu(resize_keyboard=True, keyboard=[
+    [
+        Btn('📃 Трек'),
+    ]
+])
+
 main_menu = Menu(resize_keyboard=True, keyboard=[
     [
         Btn('➕ Добавить ссылку на трек'),
@@ -19,6 +25,7 @@ main_menu = Menu(resize_keyboard=True, keyboard=[
         Btn('🍁 Изменить канал'),
         Btn('⌚ Изменить время'),
         Btn('🔊 Покричать'),
+        Btn('🔊 Отчёт'),
     ]
 ])
 

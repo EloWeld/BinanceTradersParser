@@ -1,12 +1,13 @@
 import asyncio
 import json
+from datetime import datetime
 from math import ceil
 
 from aiogram import Bot, types, utils
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.dispatcher.filters import Text, CommandStart, Command
-from aiogram.types import BotCommand, CallbackQuery, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import BotCommand, CallbackQuery, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.utils import executor
 import requests
 from aiogram.utils.markdown import text, underline, italic, bold
@@ -307,30 +308,35 @@ async def send_trader_info(trader, t_name: str):
     await bot.send_message(chat_id=CHANNEL, text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
+@dp.message_handler(IsAdmin(), Text("Отчёт"))
+async def start_broadcast(message: Message = None):
+    traders = TracksDB.get_traders()
+    for trader in traders:
+        # Get trader name
+        trader_name = get_nickanme(trader)
+        # Check posting time
+        await send_trader_info(trader, trader_name)
+
+
 async def process_info():
     global minute_msgs
     global is_posting
-    is_posting += 1
+
+    curr_time = ':'.join(str(datetime.now().time()).split(':')[:2])
+    post_time = os.getenv("POSTING_TIME")
+    if curr_time != post_time:
+        minute_msgs = False
+        return
+
     if not minute_msgs:
-        from datetime import datetime
-        c_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-        pt = os.getenv("POSTING_TIME")
-        if c_time != pt:
-            return
-        else:
-            print("Posting time! YO!")
-            minute_msgs = True
-            traders = TracksDB.get_traders()
-            for trader in traders:
-                # Get trader name
-                trader_name = get_nickanme(trader)
-                # Check posting time
-                await send_trader_info(trader, trader_name)
+        minute_msgs = True
+        is_posting += 1
+
+        print("Posting time! YO!")
+        await start_broadcast()
 
 
 async def parse():
-    await process_info()
-
     global is_parsing
     is_parsing += 1
 
@@ -402,8 +408,7 @@ async def minute_timer():
     minute_msgs = False
 
 
-async def scheduled(delay, interval, func):
-    await asyncio.sleep(delay)
+async def scheduled(interval, func):
     while True:
         await func()
         await asyncio.sleep(interval)
@@ -411,6 +416,9 @@ async def scheduled(delay, interval, func):
 
 # ============= STARTUP ============= #
 async def on_startup(dp):
+    asyncio.create_task(scheduled(REFRESH_RATE, parse))
+    asyncio.create_task(scheduled(30, process_info))
+
     await set_default_commands(dp)
     for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
         await bot.send_message(chat_id=admin, text="💫 Binanser bot strated!")
@@ -437,8 +445,6 @@ async def set_default_commands(dp):
 
 
 if __name__ == "__main__":
-    asyncio.ensure_future(scheduled(0, REFRESH_RATE, parse))
-    asyncio.ensure_future(scheduled(0, 62, minute_timer))
     print("Binanser started")
     executor.start_polling(dp, on_startup=on_startup,
                            on_shutdown=on_shutdown)

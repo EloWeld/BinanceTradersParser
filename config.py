@@ -6,11 +6,10 @@ from dotenv import load_dotenv
 IS_SERVER = False
 SERVER_HOUR_OFFSET = -3
 load_dotenv()
-PSDB = dict(name=os.getenv('DB_USER'), user=os.getenv('DB_USER'),
-            pwd=os.getenv('DB_PWD'),
-            host="chunee.db.elephantsql.com",
-            port="5432")
-DB_CREDS = Enum('ElephCredentails', PSDB)
+DB_CREDS = dict(USER=os.getenv('DB_USER'),
+                PASSWORD=os.getenv('DB_PWD'),
+                HOST="chunee.db.elephantsql.com")
+NON_POSGRE_SQL = True
 
 TOKEN = os.getenv('TOKEN')
 CHANNEL = os.getenv('CHANNEL')

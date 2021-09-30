@@ -1,20 +1,24 @@
 import sqlite3
 import psycopg2
 
-from config import DB_CREDS
+from config import DB_CREDS, NON_POSGRE_SQL
 
 
 class Database:
     def __init__(self, path_to_db="Data.db"):
         super(Database, self).__init__()
         self.path_to_db = path_to_db
+        self.NON_POSGRE_SQL = NON_POSGRE_SQL
 
     @property
     def connection(self):
-        return psycopg2.connect(dbname=DB_CREDS.name.value,
-                                user=DB_CREDS.user.value,
-                                password=DB_CREDS.pwd.value,
-                                host=DB_CREDS.host.value)
+        if self.NON_POSGRE_SQL:
+            return sqlite3.connect(self.path_to_db)
+        else:
+            return psycopg2.connect(dbname=DB_CREDS["USER"],
+                                    user=DB_CREDS["USER"],
+                                    password=DB_CREDS["PASSWORD"],
+                                    host=DB_CREDS["HOST"])
 
     def execute(self, sql: str, parameters: tuple = None, fetchone=False, fetchall=False, commit=False):
         if not parameters:
@@ -22,6 +26,8 @@ class Database:
         connection = self.connection
         cursor = connection.cursor()
         data = None
+        if self.NON_POSGRE_SQL:
+            sql = sql.replace('%s', '?')
         cursor.execute(sql, parameters)
         if commit:
             connection.commit()
@@ -105,6 +111,24 @@ class TracksDatabase(Database):
               'WHERE id = %s'
         params = (str(newdata), int(trackid))
         self.execute(sql, params, commit=True)
+
+
+def dbTraderModel(x):
+    return dict(
+        data=x[0],
+        len=x[1],
+        id=x[2],
+        link=x[3],
+    )
+
+
+def dbUserModel(x):
+    return dict(
+        id=x[0],
+        tgid=x[1],
+        username=x[2],
+        role=x[3],
+    )
 
 
 TracksDB = TracksDatabase()
