@@ -420,13 +420,9 @@ async def on_startup(dp):
     asyncio.create_task(scheduled(30, process_info))
 
     await set_default_commands(dp)
-    for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
-        await bot.send_message(chat_id=admin, text="💫 Binanser bot strated!")
 
 
 async def on_shutdown(dispatcher):
-    for admin in [x["tgid"] for x in UsersDB.all_users() if x["role"] == 1]:
-        await bot.send_message(chat_id=admin, text="🛑 Binanser bot shutdowned!")
 
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()

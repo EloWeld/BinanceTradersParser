@@ -52,12 +52,7 @@ class UsersDatabase(Database):
         data = self.execute(sql, fetchall=True)
         if not data or len(data) == 0:
             return []
-        d = [{
-            'id': x[0],
-            'tgid': x[1],
-            'username': x[2],
-            'role': x[3],
-        } for x in data]
+        d = [dbUserModel(x) for x in data]
         return d
 
     def all_admins(self):
@@ -91,12 +86,7 @@ class TracksDatabase(Database):
         data = self.execute(sql, fetchall=True)
         if not data or len(data) == 0:
             return []
-        d = [{
-            'data': x[0],
-            'pos': x[1],
-            'id': x[2],
-            'link': x[3],
-        } for x in data]
+        d = [dbTraderModel(x) for x in data]
         return d
 
     def delete_trader(self, x):
@@ -116,7 +106,7 @@ class TracksDatabase(Database):
 def dbTraderModel(x):
     return dict(
         data=x[0],
-        len=x[1],
+        pos=x[1],
         id=x[2],
         link=x[3],
     )
