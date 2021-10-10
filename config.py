@@ -13,6 +13,7 @@ NON_POSGRE_SQL = True
 
 TOKEN = os.getenv('TOKEN')
 CHANNEL = os.getenv('CHANNEL')
+os.environ["CHANNEL"] = CHANNEL
 ACCUR = os.getenv('ACCUR')
 POSTING_TIME = os.getenv('POSTING_TIME')
 REFRESH_RATE = int(os.getenv('REFRESH_RATE'))

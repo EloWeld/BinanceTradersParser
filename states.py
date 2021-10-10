@@ -13,3 +13,4 @@ from database import TracksDatabase
 
 class MenuStates(StatesGroup):
     Command = State()
+    ChannelChange = State()

@@ -104,7 +104,7 @@ async def btnScreamChat(message: types.Message):
 
 @dp.message_handler(IsAdmin(), IsPrivate(), state="scream")
 async def stateScreamChat(message: types.Message, state: FSMContext):
-    await bot.send_message(chat_id=CHANNEL, text=message.text)
+    await bot.send_message(chat_id=os.environ["CHANNEL"], text=message.text)
     await state.finish()
 
 
@@ -116,12 +116,12 @@ async def stateScreamChat(message: types.Message, state: FSMContext):
 @dp.message_handler(Text('🍁 Изменить канал'), IsAdmin(), IsPrivate())
 async def btnChangeChannel(message: types.Message):
     await message.answer(MSG["CHANGE_CH_MSG"])
-    state = dp.current_state(user=message.from_user.id)
-    await state.set_state("change_channel")
+    await MenuStates.ChannelChange.set()
 
 
-@dp.message_handler(IsAdmin(), IsPrivate(), state="change_channel")
+@dp.message_handler(IsAdmin(), IsPrivate(), state=MenuStates.ChannelChange)
 async def stateChangeChannel(message: types.Message, state: FSMContext):
+    global CHANNEL
     try:
         test_chat = message.text
         msg = await bot.send_message(chat_id=test_chat, text=MSG["TEST_CHAT"])
@@ -130,6 +130,7 @@ async def stateChangeChannel(message: types.Message, state: FSMContext):
         await message.answer(text=MSG["CHAT_ACCEPTED"])
         os.putenv("CHANNEL", test_chat)
         os.environ["CHANNEL"] = test_chat
+        CHANNEL = test_chat
         if os.name == 'nt' and not IS_SERVER:
             import dotenv
             dotenv_file = dotenv.find_dotenv()
@@ -305,7 +306,7 @@ async def send_trader_info(trader, t_name: str):
 
     footer = f"==============\n"
 
-    await bot.send_message(chat_id=CHANNEL, text=title + description + footer, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id=os.environ["CHANNEL"], text=title + description + footer, parse_mode=ParseMode.HTML)
 
 
 @dp.message_handler(IsAdmin(), Text("Отчёт"))
@@ -323,17 +324,16 @@ async def process_info():
     global is_posting
 
     curr_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-    post_time = os.getenv("POSTING_TIME")
-    if curr_time != post_time:
+    post_time = os.environ["POSTING_TIME"]
+    if curr_time == post_time:
+        if not minute_msgs:
+            minute_msgs = True
+            is_posting += 1
+
+            print("Posting time! YO!")
+            await start_broadcast()
+    else:
         minute_msgs = False
-        return
-
-    if not minute_msgs:
-        minute_msgs = True
-        is_posting += 1
-
-        print("Posting time! YO!")
-        await start_broadcast()
 
 
 async def parse():
@@ -392,7 +392,7 @@ async def parse():
                     continue
                 print(changes)
                 # Sending
-                await bot.send_message(chat_id=os.getenv("CHANNEL"),
+                await bot.send_message(chat_id=os.environ["CHANNEL"],
                                        text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
                                        parse_mode=ParseMode.HTML
                                        )
@@ -417,7 +417,7 @@ async def scheduled(interval, func):
 # ============= STARTUP ============= #
 async def on_startup(dp):
     asyncio.create_task(scheduled(REFRESH_RATE, parse))
-    asyncio.create_task(scheduled(30, process_info))
+    asyncio.create_task(scheduled(27, process_info))
 
     await set_default_commands(dp)
 
