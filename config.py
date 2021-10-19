@@ -29,6 +29,31 @@ ROLES = {
     1: "Админ"
 }
 
+minute_msgs = False
+is_parsing = 0
+is_posting = 0
+
+
+def add_parsing_iteration():
+    global is_parsing
+    is_parsing += 1
+
+
+def add_posting_iteration():
+    global is_posting
+    is_posting += 1
+
+
+def get_parsing_iteration():
+    global is_parsing
+    return is_parsing
+
+
+def get_posting_iteration():
+    global is_posting
+    return is_posting
+
+
 MSG_S = dict(DAILY="Ежедневно",
              EXACT_WEEKLY="Последние 7 дней",
              EXACT_MONTHLY="Последние 30 дней",

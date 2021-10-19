@@ -1,37 +1,32 @@
-import asyncio
 import json
-from datetime import datetime
+import os
 from math import ceil
 
-from aiogram import Bot, types, utils
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import Dispatcher, FSMContext
-from aiogram.dispatcher.filters import Text, CommandStart, Command
-from aiogram.types import BotCommand, CallbackQuery, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Message
-from aiogram.utils import executor
 import requests
-from aiogram.utils.markdown import text, underline, italic, bold
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.types import BotCommand, CallbackQuery, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Message
 
-import nav
-from config import *
+from config import ROLES, IS_SERVER, SERVER_HOUR_OFFSET, TRACK_COND, ACCUR, BINANCE_BASE_URL, BINANCE_POS_URL, \
+    BINANCE_PERF_URL, is_parsing, is_posting
 from database import *
 from filters import IsAdmin, IsPrivate
 from states import *
-import bs4
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
-
-minute_msgs = False
-is_parsing = 0
-is_posting = 0
 
 
 # ============= CALLBACKS ============= #
 @dp.callback_query_handler(lambda c: "delete:" in c.data)
 async def callbacks(cb: CallbackQuery):
-    link = cb.data.split(':')[1]
-    TracksDB.delete_trader(link)
+    await cb.answer()
+    print("Deleting trader")
+    print(TracksDB.get_traders())
+
+    _id = cb.data.split(':')[1]
+    TracksDB.delete_trader(_id)
+
+    print(TracksDB.get_traders())
     await cb.message.delete()
 
 
@@ -206,16 +201,15 @@ async def errors_handler(update, exception):
 
 @dp.message_handler(IsPrivate(), Command('config'), IsAdmin())
 async def stateCommand(message: types.Message):
-    global is_parsing
-    global is_posting
+    import config
     t = '=== CONFIG ===' + '\n'
     t += f'TIME: {os.getenv("POSTING_TIME")}' + '\n'
     t += f'CHANNEL: {os.getenv("CHANNEL")}' + '\n'
     t += f'REFRESH_RATE: {os.getenv("REFRESH_RATE")}' + '\n'
     t += f'ACCUR: {os.getenv("ACCUR")}' + '\n'
     t += '---------' + '\n'
-    t += f'PARSING: {is_parsing}' + '\n'
-    t += f'POSTING: {is_posting}' + '\n'
+    t += f'PARSING: {config.get_parsing_iteration()}' + '\n'
+    t += f'POSTING: {config.get_posting_iteration()}' + '\n'
     t += '=== ===== ===' + '\n'
     await message.answer(text=t)
 
@@ -302,7 +296,7 @@ async def send_trader_info(trader, t_name: str):
     description = ''
     for r in roe:
         if r != 'ALL':  # Да, да, блять, костыли, ну и похуй
-            description += f'<b>{MSG_S[r]}</b>: {format_float(roe[r] * 100, 2)}% \n'
+            description += f'<b>{config.MSG_S[r]}</b>: {format_float(roe[r] * 100, 2)}% \n'
 
     footer = f"==============\n"
 
@@ -319,106 +313,8 @@ async def start_broadcast(message: Message = None):
         await send_trader_info(trader, trader_name)
 
 
-async def process_info():
-    global minute_msgs
-    global is_posting
-
-    curr_time = ':'.join(str(datetime.now().time()).split(':')[:2])
-    post_time = os.environ["POSTING_TIME"]
-    if curr_time == post_time:
-        if not minute_msgs:
-            minute_msgs = True
-            is_posting += 1
-
-            print("Posting time! YO!")
-            await start_broadcast()
-    else:
-        minute_msgs = False
-
-
-async def parse():
-    global is_parsing
-    is_parsing += 1
-
-    traders = TracksDB.get_traders()
-    for trader in traders:
-        print(trader)
-        # Get trader name
-        trader_name = get_nickanme(trader)
-
-        # Get trader positions from jsoned post request
-        r_data = get_trader_positions(trader)
-        if r_data:
-            olddata = json.loads(trader["data"])
-            jsdata = r_data["otherPositionRetList"]
-            n_data = {
-                "trader_name": trader_name,
-                "len": len(jsdata),
-                "pos": {d["symbol"]: d["amount"] for d in jsdata},
-                "ent_prices": {d["symbol"]: d["entryPrice"] for d in jsdata},
-            }
-            # Update trader data in database
-            TracksDB.update_trader_data(json.dumps(n_data), trader["id"])
-            # print(jsdata, newdata)
-            # Exit if trader has no positions else check equiality of data with
-            # previous values
-            if olddata != n_data:
-                changes = []
-                for nd in n_data["pos"].keys():
-                    tiker = nd
-                    chgName = 'Long' if n_data["pos"][nd] > 0 else 'Short'
-                    ent_price = "%.3f" % n_data["ent_prices"][nd]
-                    # Position opening
-                    if "pos" not in olddata or nd not in olddata["pos"]:
-                        changes.append(MSG["OPENED"].format(tiker, chgName, ent_price))
-                    # Position diff calc
-                    if "pos" not in olddata or (not isinstance(olddata["pos"], dict)):
-                        print('Old data corrupted')
-                    elif nd in olddata["pos"] and \
-                            n_data["pos"][nd] != olddata["pos"][nd]:
-                        diff = (n_data["pos"][nd] - olddata["pos"][nd]) / olddata["pos"][nd] * 100
-                        emj = '🔼' if diff > 0 else '🔽'
-                        diff = format_float(diff)
-                        changes.append(MSG["CHANGE"].format(emj, tiker, chgName, diff, ent_price))
-                # Position closing (if no olddata)
-                try:
-                    for od in olddata["pos"].keys():
-                        chgName = 'Long' if olddata["pos"][od] > 0 else 'Short'
-                        if od not in n_data["pos"]:
-                            changes.append(MSG["CLOSED"].format(od, chgName))
-                except:
-                    pass
-                if not changes:
-                    continue
-                print(changes)
-                # Sending
-                await bot.send_message(chat_id=os.environ["CHANNEL"],
-                                       text=MSG["POST_TITLE"].format(trader_name, n_data["len"]) + '\n'.join(changes),
-                                       parse_mode=ParseMode.HTML
-                                       )
-            else:
-                print('No Changes')
-                print('=' * 50)
-
-
-# ============= TIMER ============= #
-
-async def minute_timer():
-    global minute_msgs
-    minute_msgs = False
-
-
-async def scheduled(interval, func):
-    while True:
-        await func()
-        await asyncio.sleep(interval)
-
-
 # ============= STARTUP ============= #
 async def on_startup(dp):
-    asyncio.create_task(scheduled(REFRESH_RATE, parse))
-    asyncio.create_task(scheduled(27, process_info))
-
     await set_default_commands(dp)
 
 
@@ -437,6 +333,8 @@ async def set_default_commands(dp):
         BotCommand("scream_chat", "Покричать что-то в чат/канал"),
         BotCommand("change_channel", "Изменить канал"),
         BotCommand("change_time", "Изменить время постинга"),
+        BotCommand("config", "Конфигурационные данные бота и статистика"),
+        BotCommand("chatid", "Чат ID"),
     ])
 
 
