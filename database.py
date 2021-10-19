@@ -41,9 +41,9 @@ class Database:
 
 
 class UsersDatabase(Database):
-    def add_user(self, id: int, username: str):
-        sql = 'INSERT INTO users(tgid, username) VALUES (%s, %s)'
-        params = (id, username)
+    def add_user(self, tgid: int, username: str):
+        sql = 'INSERT INTO users(tgid, username, role) VALUES (%s, %s, %s)'
+        params = (tgid, username, 0)
         data = self.execute(sql, params, commit=True)
         return data
 
@@ -58,18 +58,18 @@ class UsersDatabase(Database):
     def all_admins(self):
         return [x for x in self.all_users() if x["role"] == 1]
 
-    def get_role(self, user_tgid):
+    def get_role(self, user_tgid: int):
         sql = 'SELECT role FROM users ' \
               'WHERE tgid = %s'
         params = (user_tgid,)
         data = self.execute(sql, params, fetchone=True)
         return data[0]
 
-    def change_role(self, user_tgid, newrole):
+    def change_role(self, tgid: int, newrole: int):
         sql = 'UPDATE users ' \
               'SET role = %s ' \
               'WHERE tgid = %s'
-        params = (newrole, user_tgid)
+        params = (newrole, tgid)
         data = self.execute(sql, params, commit=True)
         return data
 
@@ -89,26 +89,25 @@ class TracksDatabase(Database):
         d = [dbTraderModel(x) for x in data]
         return d
 
-    def delete_trader(self, x):
+    def delete_trader(self, x: int):
         sql = 'DELETE FROM traders ' \
               'WHERE id = %s'
         params = (x,)
         self.execute(sql, params, commit=True)
 
-    def update_trader_data(self, newdata, trackid):
+    def update_trader_data(self, newdata: str, trackid: int):
         sql = 'UPDATE traders ' \
               'SET data = %s ' \
               'WHERE id = %s'
-        params = (str(newdata), int(trackid))
+        params = (newdata, trackid)
         self.execute(sql, params, commit=True)
 
 
 def dbTraderModel(x):
     return dict(
-        data=x[0],
-        pos=x[1],
-        id=x[2],
-        link=x[3],
+        id=x[0],
+        link=x[1],
+        data=x[2],
     )
 
 

@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="nqywnhxr@chunee.db.elephantsql.com" uuid="306f8f71-cdec-46b6-8b4d-17b967fbf590">
-      <driver-ref>postgresql</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://chunee.db.elephantsql.com:5432/nqywnhxr</jdbc-url>
-    </data-source>
-    <data-source source="LOCAL" name="Data.db" uuid="8473ecf8-f3ee-4117-8915-8906855ff816">
+    <data-source source="LOCAL" name="Database.db" uuid="f3d7456c-409b-47fc-871b-e991633208ff">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Data.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Database.db</jdbc-url>
     </data-source>
   </component>
 </project>
