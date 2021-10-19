@@ -15,7 +15,7 @@ class Database:
         if self.NON_POSGRE_SQL:
             return sqlite3.connect(self.path_to_db)
         else:
-            return psycopg2.connect(dbname=DB_CREDS["USER"],
+            return psycopg2.connect(dbname=DB_CREDS["NAME"],
                                     user=DB_CREDS["USER"],
                                     password=DB_CREDS["PASSWORD"],
                                     host=DB_CREDS["HOST"])

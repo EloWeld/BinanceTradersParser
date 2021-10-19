@@ -7,5 +7,11 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Database.db</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="d2ela96hlqs9qo@ec2-176-34-116-203.eu-west-1.compute.amazonaws.com" uuid="43af1ccc-e277-49a6-8d35-0091b5113508">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://ec2-176-34-116-203.eu-west-1.compute.amazonaws.com:5432/d2ela96hlqs9qo</jdbc-url>
+    </data-source>
   </component>
 </project>

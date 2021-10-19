@@ -7,9 +7,10 @@ IS_SERVER = False
 SERVER_HOUR_OFFSET = -3
 load_dotenv()
 DB_CREDS = dict(USER=os.getenv('DB_USER'),
+                NAME=os.getenv('DB_NAME'),
                 PASSWORD=os.getenv('DB_PWD'),
-                HOST="chunee.db.elephantsql.com")
-NON_POSGRE_SQL = True
+                HOST=os.getenv('DB_HOST'))
+NON_POSGRE_SQL = False
 
 TOKEN = os.getenv('TOKEN')
 CHANNEL = os.getenv('CHANNEL')
