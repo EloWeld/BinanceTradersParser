@@ -17,14 +17,14 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 # ============= CALLBACKS ============= #
-@dp.callback_query_handler(lambda c: "delete:" in c.data)
+@dp.callback_query_handler(lambda c: "DELETE:" in c.data)
 async def callbacks(cb: CallbackQuery):
     await cb.answer()
     print("Deleting trader")
     print(TracksDB.get_traders())
 
-    _id = cb.data.split(':')[1]
-    TracksDB.delete_trader(_id)
+    trader_id = int(cb.data.split(':')[1])
+    TracksDB.delete_trader(trader_id)
 
     print(TracksDB.get_traders())
     await cb.message.delete()

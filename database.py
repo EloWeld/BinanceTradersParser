@@ -5,7 +5,7 @@ from config import DB_CREDS, NON_POSGRE_SQL
 
 
 class Database:
-    def __init__(self, path_to_db="Data.db"):
+    def __init__(self, path_to_db="Database.db"):
         super(Database, self).__init__()
         self.path_to_db = path_to_db
         self.NON_POSGRE_SQL = NON_POSGRE_SQL
@@ -89,10 +89,10 @@ class TracksDatabase(Database):
         d = [dbTraderModel(x) for x in data]
         return d
 
-    def delete_trader(self, x: int):
+    def delete_trader(self, trader_id: int):
         sql = 'DELETE FROM traders ' \
               'WHERE id = %s'
-        params = (x,)
+        params = (trader_id,)
         self.execute(sql, params, commit=True)
 
     def update_trader_data(self, newdata: str, trackid: int):

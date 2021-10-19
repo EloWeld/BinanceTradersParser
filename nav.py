@@ -33,7 +33,7 @@ main_menu = Menu(resize_keyboard=True, keyboard=[
 def track_menu(data: str):
     return InlKeyboard(inline_keyboard=[
         [
-            InlineBtn(text='Удалить ❌', callback_data=f'delete:{data}'),
+            InlineBtn(text='Удалить ❌', callback_data=f'DELETE:{data}'),
             # InlineBtn(text='Заменить ссылку ⏪', callback_data=f'rewrite:{data}')
         ]
     ])
