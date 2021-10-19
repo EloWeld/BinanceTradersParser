@@ -188,8 +188,7 @@ async def btnAllTrack(message: types.Message):
 
         for tr in tracks:
             await message.answer(text=f'Id: {tr["id"]}\n'
-                                      f'Link: {tr["link"]}\n'
-                                      f'Position: {tr["pos"]}\n',
+                                      f'Link: {tr["link"]}\n',
                                  reply_markup=nav.track_menu(tr["id"]))
 
 
