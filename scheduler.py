@@ -6,6 +6,7 @@ from config import REFRESH_RATE, MSG
 # ============= TIMER ============= #
 from database import TracksDB
 from main import get_nickanme, get_trader_positions, format_float
+from scheduler2 import process_info
 
 
 async def minute_timer():
@@ -15,6 +16,7 @@ async def minute_timer():
 
 async def parse():
     import config, main
+    await process_info()
     config.add_parsing_iteration()
     print(f'************** \t(ITERATION {config.get_parsing_iteration()}) \t***************')
 

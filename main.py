@@ -7,7 +7,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import BotCommand, CallbackQuery, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from config import ROLES, IS_SERVER, SERVER_HOUR_OFFSET, TRACK_COND, ACCUR, BINANCE_BASE_URL, BINANCE_POS_URL, \
-    BINANCE_PERF_URL, is_parsing, is_posting
+    BINANCE_PERF_URL, is_parsing, is_posting, MSG_S
 from database import *
 from filters import IsAdmin, IsPrivate
 from states import *
@@ -296,7 +296,7 @@ async def send_trader_info(trader, t_name: str):
     description = ''
     for r in roe:
         if r != 'ALL':  # Да, да, блять, костыли, ну и похуй
-            description += f'<b>{config.MSG_S[r]}</b>: {format_float(roe[r] * 100, 2)}% \n'
+            description += f'<b>{MSG_S[r]}</b>: {format_float(roe[r] * 100, 2)}% \n'
 
     footer = f"==============\n"
 
