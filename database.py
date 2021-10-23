@@ -75,9 +75,9 @@ class UsersDatabase(Database):
 
 
 class TracksDatabase(Database):
-    def add_trader(self, link: str):
-        sql = 'INSERT INTO traders(link) VALUES (%s)'
-        params = (link,)
+    def add_trader(self, link: str, data):
+        sql = 'INSERT INTO traders(link, data) VALUES (%s, %s)'
+        params = (link, data)
         data = self.execute(sql, params, commit=True)
         return data
 

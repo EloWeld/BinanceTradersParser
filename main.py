@@ -217,7 +217,13 @@ async def stateCommand(message: types.Message):
 async def stateCommand(message: types.Message, state: FSMContext):
     # Filter
     if TRACK_COND in message.text:
-        TracksDB.add_trader(message.text)
+        n_data = {
+            "trader_name": get_nickanme(message.text.split('encryptedUid=')[1]),
+            "len": 0,
+            "pos": dict(),
+            "ent_prices": dict(),
+        }
+        TracksDB.add_trader(message.text, json.dumps(n_data))
 
         await message.answer(MSG["TRACK_ADDED"])
 
@@ -247,8 +253,7 @@ def format_float(f, accuracy=ACCUR):
     return '+' + f"%.{accuracy}f" % f if f > 0 else f"%.{accuracy}f" % f
 
 
-def get_nickanme(trader):
-    encUid = trader["link"].split('encryptedUid=')[1]
+def get_nickanme(encUid: int):
     payload = {"encryptedUid": encUid}
 
     try:
@@ -260,8 +265,7 @@ def get_nickanme(trader):
     return a.json()["data"]["nickName"]
 
 
-def get_trader_positions(trader):
-    encUid = trader["link"].split('encryptedUid=')[1]
+def get_trader_positions(encUid: int):
     payload = {
         "encryptedUid": encUid, "tradeType": "PERPETUAL"
     }
@@ -307,7 +311,7 @@ async def start_broadcast(message: Message = None):
     traders = TracksDB.get_traders()
     for trader in traders:
         # Get trader name
-        trader_name = get_nickanme(trader)
+        trader_name = get_nickanme(trader["link"].split('encryptedUid=')[1])
         # Check posting time
         await send_trader_info(trader, trader_name)
 

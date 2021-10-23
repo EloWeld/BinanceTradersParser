@@ -24,10 +24,10 @@ async def parse():
     for trader in traders:
         print("Parsing trader:", json.loads(trader["data"])["trader_name"])
         # Get trader name
-        trader_name = get_nickanme(trader)
+        trader_name = get_nickanme(trader["link"].split('encryptedUid=')[1])
 
         # Get trader positions from jsoned post request
-        r_data = get_trader_positions(trader)
+        r_data = get_trader_positions(trader["link"].split('encryptedUid=')[1])
         if r_data:
             olddata = json.loads(trader["data"])
             jsdata = r_data["otherPositionRetList"]
